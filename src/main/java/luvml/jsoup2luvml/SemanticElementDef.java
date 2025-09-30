@@ -18,6 +18,10 @@ public final class SemanticElementDef<T extends SemanticElement_I<T>>  {
         tagName = s.tagName();
         voidType = s instanceof SemanticVoidElement_I ;
     }
+    
+    public static <T extends SemanticElement_I<T>> SemanticElementDef<T> semanticElementDef(Class<T> classDef, Supplier<T> constructor){
+        return new SemanticElementDef(classDef, constructor);
+    }
 
     public Class<T> classDef() {
         return classDef;

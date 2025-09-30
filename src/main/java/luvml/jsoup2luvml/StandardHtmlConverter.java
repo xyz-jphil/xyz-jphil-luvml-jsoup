@@ -23,7 +23,7 @@ import luvx.mutable.MutableContainerElement_I;
  * - JSoup TextNode → LUVML HtmlText
  * - Recursive conversion with type-safe pattern matching
  */
-public class JSoupToLuvmlConverter {
+public class StandardHtmlConverter {
 
     /**
      * Convert JSoup Document to LUVML Document structure
@@ -36,7 +36,7 @@ public class JSoupToLuvmlConverter {
     /**
      * Convert JSoup Element to appropriate LUVML Element using E.java type mappings
      */
-    public Element_I<?> convertElement(Element jsoupElement) {
+    public static Element_I<?> convertElement(Element jsoupElement) {
         if (jsoupElement == null) {
             return null;
         }
@@ -85,7 +85,7 @@ public class JSoupToLuvmlConverter {
     /**
      * Convert JSoup child nodes to LUVML child nodes using type discrimination
      */
-    private void convertChildNodes(Element jsoupElement, ContainerElement_I<?> containerElement) {
+    private static void convertChildNodes(Element jsoupElement, ContainerElement_I<?> containerElement) {
         for (var childNode : jsoupElement.childNodes()) {
             var convertedNode = convertNode(childNode);
             if (convertedNode != null) {
@@ -102,7 +102,7 @@ public class JSoupToLuvmlConverter {
     /**
      * Convert individual JSoup Node using type-safe switch expressions
      */
-    public Node_I<?> convertNode(Node jsoupNode) {
+    public static Node_I<?> convertNode(Node jsoupNode) {
         return switch (jsoupNode) {
             // no processing instruction or document type 
             case Element element -> convertElement(element);
@@ -125,7 +125,7 @@ public class JSoupToLuvmlConverter {
     /**
      * Convert JSoup attributes to LUVML attributes
      */
-    private void convertAttributes(Element jsoupElement, Element_I<?> luvmlElement) {
+    private static void convertAttributes(Element jsoupElement, Element_I<?> luvmlElement) {
         for (var attr : jsoupElement.attributes()) {
             // Create HtmlAttribute and add as content
             var htmlAttr = new HtmlAttribute(attr.getKey(), attr.getValue());

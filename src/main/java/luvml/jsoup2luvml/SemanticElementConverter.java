@@ -17,22 +17,26 @@ import luvx.mutable.MutableContainerElement_I;
  * - Register custom semantic elements: factory.register(MyElement.class, MyElement::new)
  * - Convert JSoup to LUVML: factory.createSemanticElement(jsoupElement)
  */
-public class SemanticElementFactory {
-
-    private final JSoupToLuvmlConverter baseConverter;
+public class SemanticElementConverter {
+    private SemanticElementConverter(){}
     private final LinkedHashMap<String,SemanticElementDef<?>> defs = new LinkedHashMap<>();
 
-    public SemanticElementFactory() {
-        this.baseConverter = new JSoupToLuvmlConverter();
-    }
-
-    public SemanticElementFactory(JSoupToLuvmlConverter converter) {
-        this.baseConverter = converter;
-    }
-    
     public <T extends SemanticElement_I<T>> void register(Class<T> clss, Supplier<T> s){
         var ss = new SemanticElementDef(clss,s);
         defs.put(ss.tagName(), ss);
+    }
+    
+    public static <T extends SemanticElement_I<T>> SemanticElementDef<T> def(Class<T> classDef, Supplier<T> constructor){
+        return new SemanticElementDef(classDef, constructor);
+    }
+    
+    public static SemanticElementConverter semanticElementConverter(
+           SemanticElementDef ... defs){
+        var x = new SemanticElementConverter();
+        for (SemanticElementDef def : defs) {
+            x.defs.put(def.tagName(), def);
+        }
+        return x;
     }
 
     /**
@@ -52,7 +56,7 @@ public class SemanticElementFactory {
         }
 
         // Fallback to standard HTML elements
-        return baseConverter.convertElement(jsoupElement);
+        return StandardHtmlConverter.convertElement(jsoupElement);
     }
 
     /**
@@ -80,7 +84,7 @@ public class SemanticElementFactory {
      */
     private void convertChildNodes(Element jsoupElement, ContainerElement_I luvmlElement) {
         for (var childNode : jsoupElement.childNodes()) {
-            var convertedNode = baseConverter.convertNode(childNode);
+            var convertedNode = StandardHtmlConverter.convertNode(childNode);
             if (convertedNode != null) {
                 // whether inline or block, we can add in a mutable container
                 if (luvmlElement instanceof MutableContainerElement_I blockElement) {
