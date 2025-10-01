@@ -52,21 +52,44 @@ switch (element) {
 import static luvml.jsoup2luvml.SemanticElementConverter.*;
 import static luvml.E.*; // Standard HTML DSL
 import luvml.element.SemanticBlockContainerElement;
+import luvml.element.SemanticElementTagNameClassNameMapping.CamelCase_E;
 
-// 1. Define custom element
-public class ProductCard extends SemanticBlockContainerElement<ProductCard> {
-    public ProductCard() { super(ProductCard.class); }
+// 1. Define custom element with attribute constants and tag name mapping
+public class ProductCard_E extends SemanticBlockContainerElement<ProductCard_E> implements CamelCase_E {
+    public ProductCard_E() { super(ProductCard_E.class); }
 
-    public String sku() { return attr("sku"); }
-    public String category() { return attr("category"); }
+    public static final String $sku = "sku";
+    public static final String $category = "category";
+
+    public String sku() { return attr($sku); }
+    public String category() { return attr($category); }
 }
 
-// 2. Register (one line!)
+// 2. Create DSL functions (element + attributes)
+import static ProductCard_E.*;
+import static luvml.E.*;
+import static luvml.T.text;
+
+public class ProductDsl {
+    public static ProductCard_E productCard(Frag_I<?>... content) {
+        return new ProductCard_E().____(content);
+    }
+
+    public static HtmlAttribute sku(String value) {
+        return new HtmlAttribute($sku, value);
+    }
+
+    public static HtmlAttribute category(String value) {
+        return new HtmlAttribute($category, value);
+    }
+}
+
+// 3. Register (one line!)
 var converter = semanticElementConverter(
-    def(ProductCard.class, ProductCard::new)
+    def(ProductCard_E.class, ProductCard_E::new)
 );
 
-// 3. Parse HTML
+// 4. Parse HTML
 String html = """
     <productCard sku="ABC-123" category="electronics">
         <h3>Wireless Headphones</h3>
@@ -76,20 +99,48 @@ String html = """
 
 var fragments = converter.convertMixedFragment(html);
 
-// 4. Type-safe processing
+// 5. Type-safe processing with pattern matching
+import static ProductDsl.*;
+
 for (var node : fragments) {
     switch (node.nodeType()) {
         case Element_T e -> {
-            if (e.element() instanceof ProductCard card) {
+            if (e.element() instanceof ProductCard_E card) {
                 System.out.println("SKU: " + card.sku());
                 System.out.println("Category: " + card.category());
             }
         }
     }
 }
+
+// 6. Or create programmatically with DSL - bidirectional!
+var newProduct = productCard(
+    sku("XYZ-789"),
+    category("audio"),
+    h3(text("Bluetooth Speaker")),
+    p(className("price"), text("$149.99"))
+);
+
+String renderedHtml = HtmlRenderer.render(newProduct);
+// Output: <productCard sku="XYZ-789" category="audio">...</productCard>
 ```
 
-**Note**: Custom element tags follow **camelCase** convention (e.g., `<productCard>`), matching XHTML custom element style. Standard HTML allows kebab-case (e.g., `<product-card>`), but we stick to camelCase for consistency with Java naming.
+**Key Points:**
+- Class name `ProductCard_E` → XML tag `<productCard>` (camelCase, _E suffix removed)
+- Implement `CamelCase_E` interface for automatic tag name mapping
+- Attribute constants (`$sku`, `$category`) for type-safe bidirectional processing
+- DSL functions for both elements and attributes - import statically for clean syntax
+- All text must use `text()` wrapper - no mixing String and Frag_I varargs
+
+**Tag Name Convention - Composable Mapping Interfaces:**
+LuvML 2.0 introduces `SemanticElementTagNameClassNameMapping` with multiple built-in styles:
+- **`CamelCase_E`**: `ProductCard_E` → `<productCard>` (JSX/React style)
+- **`LowerCase_E`**: `ProductCard_E` → `<productcard>` (standard HTML)
+- **`LowerKebabFromCamelCase_E`**: `ProductCard_E` → `<product-card>` (web components)
+- **`XmlNamespaceColonAtUnderscores_E`**: `Blog_Post_E` → `<blog:post>` (XML namespaces)
+- **`PreserveCase_E`**: `ProductCard_E` → `<ProductCard>` (custom XML)
+
+Simply implement the appropriate interface to control tag name generation without overriding methods!
 
 ---
 
@@ -98,8 +149,10 @@ for (var node : fragments) {
 ### 1. Define Semantic Elements
 
 ```java
+import luvml.element.SemanticElementTagNameClassNameMapping.CamelCase_E;
+
 // Custom elements - class name BlogPost_E → XML tag <blogPost>
-public class BlogPost_E extends SemanticBlockContainerElement<BlogPost_E> {
+public class BlogPost_E extends SemanticBlockContainerElement<BlogPost_E> implements CamelCase_E {
     public BlogPost_E() { super(BlogPost_E.class); }
 
     public static final String $slug = "slug";
@@ -111,7 +164,7 @@ public class BlogPost_E extends SemanticBlockContainerElement<BlogPost_E> {
     public Optional<String> publishDate() { return attribute($publishDate).optString(); }
 }
 
-public class CodeSnippet_E extends SemanticBlockContainerElement<CodeSnippet_E> {
+public class CodeSnippet_E extends SemanticBlockContainerElement<CodeSnippet_E> implements CamelCase_E {
     public CodeSnippet_E() { super(CodeSnippet_E.class); }
 
     public static final String $language = "language";
@@ -123,7 +176,7 @@ public class CodeSnippet_E extends SemanticBlockContainerElement<CodeSnippet_E> 
     }
 }
 
-public class InfoBox_E extends SemanticBlockContainerElement<InfoBox_E> {
+public class InfoBox_E extends SemanticBlockContainerElement<InfoBox_E> implements CamelCase_E {
     public InfoBox_E() { super(InfoBox_E.class); }
 
     public static final String $boxType = "boxType";
@@ -465,6 +518,69 @@ External HTML String
 ---
 
 ## Technical Details
+
+### New in LuvML 2.0: Enhanced Container Element Features
+
+#### 1. Text Content Extraction
+All container elements now support `textContent()` via the `TextContentProvider` interface, mirroring HTML's standard `textContent` property:
+
+```java
+var article = blogPost(
+    slug("my-post"),
+    h1(text("Title")),
+    p(text("First "), strong(text("bold")), text(" word")),
+    comment("Ignored in text extraction")
+);
+
+String plainText = article.textContent();
+// Result: "TitleFirst bold word"
+```
+
+#### 2. Child Element Access with Type Safety
+New `findChild()` and `findChildren()` methods provide type-safe access to nested elements:
+
+```java
+public class BlogPost_E extends SemanticBlockContainerElement<BlogPost_E> implements CamelCase_E {
+    // ... attribute methods ...
+
+    // Find first CodeSnippet child
+    public Optional<CodeSnippet_E> firstCodeSnippet() {
+        return findChild(CodeSnippet_E.class);
+    }
+
+    // Find all InfoBox children
+    public List<InfoBox_E> allInfoBoxes() {
+        return findChildren(InfoBox_E.class);
+    }
+}
+
+// Usage
+var post = blogPost(...);
+post.firstCodeSnippet().ifPresent(code -> {
+    System.out.println("Language: " + code.language());
+});
+```
+
+#### 3. Composable Tag Name Mapping
+The `SemanticElementTagNameClassNameMapping` interface system provides multiple strategies:
+
+```java
+// Mix different naming conventions in same project
+public class ReactButton_E extends SemanticInlineContainerElement<ReactButton_E>
+        implements CamelCase_E {
+    // → <reactButton>
+}
+
+public class WebButton_E extends SemanticInlineContainerElement<WebButton_E>
+        implements LowerKebabFromCamelCase_E {
+    // → <web-button>
+}
+
+public class Svg_Circle_E extends SemanticBlockContainerElement<Svg_Circle_E>
+        implements XmlNamespaceColonAtUnderscores_E {
+    // → <svg:circle>
+}
+```
 
 ### Zero-Cast Type Safety
 
