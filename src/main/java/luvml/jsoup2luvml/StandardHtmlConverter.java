@@ -107,7 +107,9 @@ public class StandardHtmlConverter {
             // no processing instruction or document type 
             case Element element -> convertElement(element);
             case TextNode textNode -> {
-                var text = textNode.text().trim();
+                // Use getWholeText() to preserve all whitespace (newlines, tabs, multiple spaces)
+                // HtmlText will normalize via text() when needed, but preserve via wholeText()
+                var text = textNode.getWholeText();
                 yield text.isEmpty() ? null : new HtmlText(text);
             }
             case Comment comment ->
